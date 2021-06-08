@@ -1,0 +1,238 @@
+#!/usr/bin/php
+<?php
+
+$beam = './beam.json';
+$path_assets = '/var/www/public/assets/';
+$db = 'db_prod';
+
+if (!is_file($beam)) {
+    echo 'No beam.json in the current folder.' . PHP_EOL;
+    exit;
+}
+
+$data = @json_decode(file_get_contents($beam), true);
+
+if (!$data) {
+    echo 'Invalid JSON in beam file.' . PHP_EOL;
+    exit;
+}
+
+echo PHP_EOL;
+$c = 1;
+$configs = [];
+foreach($data['servers'] as $server => $config) {
+    $configs[$c] = [
+        'user@host' => $config['user'] . '@' . $config['host'],
+        'webroot' => $config['webroot']
+    ];
+    echo '[' . $c . '] ' . $server . ' (' . $configs[$c]['user@host'] . ')' . PHP_EOL;
+    $c++;
+}
+
+echo PHP_EOL;
+echo 'Select server: ';
+
+$handle = fopen ("php://stdin","r");
+$line = fgets($handle);
+$selection = trim($line);
+
+if ((int)$selection < 1 || (int)$selection > $c) {
+    echo 'Invalid selection. Aborting.' . PHP_EOL;
+    exit;
+}
+
+
+echo PHP_EOL;
+echo 'What to download? ' . PHP_EOL . '[d]atabase / [a]ssets: ';
+
+$handleb = fopen ("php://stdin","r");
+$lineb = fgets($handleb);
+$selectionb = strtolower(trim($lineb));
+
+if ($selectionb != 'a' && $selectionb != 'd') {
+    echo 'Invalid selection. Aborting.' . PHP_EOL;
+    exit;
+}
+
+
+$cmd = '';
+
+if ($selectionb == 'a') {
+
+    $path_assets = $configs[$selection]['webroot'] . '/assets';
+    echo 'Searching for assets in site root folder... ';
+
+    $check1 = remote_dir_exists($configs[$selection]['user@host'], $path_assets);
+
+    if ($check1) {
+        echo 'found in ' . $path_assets . PHP_EOL;
+
+    } else {
+        echo ' not here.' . PHP_EOL;
+        $path_assets = $configs[$selection]['webroot'] . '/public/assets';
+        echo 'Searching for assets in public folder...';
+        $check2 = remote_dir_exists($configs[$selection]['user@host'], $path_assets);
+
+        if ($check2) {
+            echo 'found in ' . $path_assets . PHP_EOL;
+        } else {
+            echo ' not here either. Aborting.' . PHP_EOL;
+            exit;
+        }
+    }
+
+
+    // sudo
+
+    echo 'Checking for sudo command... ';
+
+    $has_sudo = remote_file_exists($configs[$selection]['user@host'], '/usr/bin/sudo');
+
+    if ($has_sudo) {
+        echo 'found.' . PHP_EOL;
+    } else {
+        echo 'not required.' . PHP_EOL;
+    }
+
+    $cmd = '/usr/bin/ssh ' . $configs[$selection]['user@host'] . " '" . ($has_sudo ? 'sudo' : '') . " tar zcvf - " . $path_assets . "' > ../assets.tar.gz ";
+
+} else {
+
+    $env_file = false;
+
+    $webroot_parts = explode('/', $configs[$selection]['webroot']);
+    $env = str_replace('/' . $webroot_parts[count($webroot_parts)-1], '', $configs[$selection]['webroot']) . '/.env';
+
+    echo 'Searching for .env in site\'s parent folder... ';
+
+    $check1 = remote_file_exists($configs[$selection]['user@host'], $env);
+
+    if ($check1) {
+        $env_file = $env;
+        echo 'found at ' . $env . PHP_EOL;
+
+    } else {
+        echo ' not here.' . PHP_EOL;
+        $env = $configs[$selection]['webroot'] . '/.env';
+        echo 'Searching for .env in site root folder...';
+        $check2 = remote_file_exists($configs[$selection]['user@host'], $env);
+
+        if ($check2) {
+            $env_file = $env;
+            echo 'found in ' . $env . PHP_EOL;            
+        } else {
+            echo ' not here either.' . PHP_EOL;
+
+
+            echo 'Searching for _ss_environment.php in site root folder...';
+
+            $env = str_replace('/' . $webroot_parts[count($webroot_parts)-1], '', $configs[$selection]['webroot']) . '/_ss_environment.php';
+
+            $check1 = remote_file_exists($configs[$selection]['user@host'], $env);
+
+            if ($check1) {
+                $env_file = $env;
+                echo 'found at ' . $env . PHP_EOL;
+        
+            } else {
+                echo ' not here.' . PHP_EOL;
+                $env = $configs[$selection]['webroot'] . '/.env';
+                echo 'Searching for _ss_environment in site root folder...';
+                $check2 = remote_file_exists($configs[$selection]['user@host'], $env);
+        
+                if ($check2) {
+                    echo 'found in ' . $env . PHP_EOL;
+                    $env_file = $env;
+                } else {
+                    echo ' not here either. Aborting.' . PHP_EOL;
+                    exit;        
+                }
+            }
+        
+        }
+    }
+
+    if ($env_file) {
+        // parse envfile
+
+        if (strstr($env_file, '.env')) {
+
+            $contents = shell_exec('/usr/bin/ssh ' . $configs[$selection]['user@host'] . " 'cat " . $env_file . "' 2>&1");
+
+            preg_match_all('/(\w+)\s*=\s*(?|"([^"]*)"|\'([^\']*)\')/', $contents, $matches, PREG_SET_ORDER);
+
+            $db_host = $db_name = $db_user = $db_pass = null;
+
+            foreach($matches as $match) {
+                if ($match[1] == 'SS_DATABASE_SERVER') {
+                    $db_host = $match[2];
+                }
+                if ($match[1] == 'SS_DATABASE_NAME') {
+                    $db_name = $match[2];
+                }
+                if ($match[1] == 'SS_DATABASE_USERNAME') {
+                    $db_user = $match[2];
+                }
+                if ($match[1] == 'SS_DATABASE_PASSWORD') {
+                    $db_pass = $match[2];
+                }
+            }
+
+            if ($db_host && $db_name && $db_user && $db_pass) {
+                $cmd = '/usr/bin/ssh ' . $configs[$selection]['user@host'] . " 'mysqldump -h" . $db_host . " -u" . $db_user . " -p" . $db_pass . " " . $db_name . "' > ../database.sql ";
+            }
+
+        } else {
+
+            $contents = shell_exec('/usr/bin/ssh ' . $configs[$selection]['user@host'] . " 'cat " . $env_file . "' 2>&1");
+
+            foreach(preg_split("/((\r?\n)|(\r\n?))/", $contents) as $line){
+
+                preg_match_all('#define\(\'(.*?)\'\);#', $line, $matches, PREG_SET_ORDER);
+                foreach($matches as $match) {
+                    $parts = explode('___|||___', str_replace(["','", "', '", "' ,'", "',  '", "' , '", "'  , '", "' ,  '"], '___|||___', $match[1]));
+                    if (count($parts) == 2) {
+                        if ($parts[0] == 'SS_DATABASE_SERVER') {
+                            $db_host = $parts[1];
+                        }
+                        if ($parts[0] == 'SS_DATABASE_NAME') {
+                            $db_name = $parts[1];
+                        }
+                        if ($parts[0] == 'SS_DATABASE_USERNAME') {
+                            $db_user = $parts[1];
+                        }
+                        if ($parts[0] == 'SS_DATABASE_PASSWORD') {
+                            $db_pass = $parts[1];
+                        }
+                    }
+                }
+    
+            } 
+
+            if ($db_host && $db_name && $db_user && $db_pass) {
+                $cmd = '/usr/bin/ssh ' . $configs[$selection]['user@host'] . " 'mysqldump -h" . $db_host . " -u" . $db_user . " -p" . $db_pass . " " . $db_name . "' > ../database.sql ";
+            }
+
+        }
+        
+    }
+    
+}
+
+if ($cmd) {
+    echo PHP_EOL . $cmd . PHP_EOL.PHP_EOL;
+    passthru($cmd);
+}
+
+
+
+function remote_file_exists($user_host, $file)
+{
+    return substr(exec("if ssh " . $user_host . " 'test -f " . $file . "'; then \r\n echo OK \r\n fi 2>&1"), -2) == 'OK';
+}
+
+function remote_dir_exists($user_host, $file)
+{
+    return substr(exec("if ssh " . $user_host . " 'test -d " . $file . "'; then \r\n echo OK \r\n fi 2>&1"), -2) == 'OK';
+}
+
