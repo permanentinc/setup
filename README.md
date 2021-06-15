@@ -6,7 +6,7 @@
 
 This is used for obtaining database and assets respectively from a digital ocean server. It will work with either a ss4 or ss3 project.
 
-With the following file : [beam-backup](beam/beam-backup)
+With the following file : [beam-backup](bash/beam-backup)
 
 Copy it to a folder in the path (/usr/local/bin) and make it executable:
 
@@ -15,6 +15,20 @@ Copy it to a folder in the path (/usr/local/bin) and make it executable:
 Then run it from you local site’s root:
 
 ```beam-backup```
+
+## ENV creation
+
+This is used for creating a new env file in the current directory
+
+With the following file : [env-create](bash/env-create)
+
+Copy it to a folder in the path (/usr/local/bin) and make it executable:
+
+```chmod +x /usr/local/bin/env-create```
+
+Then run it from you local site’s root:
+
+```env-create```
 
 
 

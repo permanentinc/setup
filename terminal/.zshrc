@@ -53,21 +53,13 @@ alias .....="cd ../../../.."
 
 
 #---------------------------------------------------------
-# Listing files
-#---------------------------------------------------------
-
-alias ls="colorls --sort-dirs --all"
-alias lss="colorls --sort-dirs --all -1"
-alias ll='colorls --sort-dirs --all -1 --long'
-alias lr='colorls --sort-dirs --all -1 --long --report'
-
-
-#---------------------------------------------------------
 # Build processes
 #---------------------------------------------------------
 
+alias y="yarn run dev"
 alias yy="yarn run dev"
 alias yb="yarn run build"
+alias e="env-create"
 
 
 #---------------------------------------------------------
@@ -83,6 +75,7 @@ alias ccc="composer install --ignore-platform-reqs"
 # Sake
 #---------------------------------------------------------
 
+alias bb="beam-backup"
 alias db="php vendor/silverstripe/framework/cli-script.php dev/build"
 alias bb="/Applications/MAMP/bin/php/php7.3.24/bin/php /usr/local/bin/beam-backup.php"
 

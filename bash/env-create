@@ -1,0 +1,100 @@
+#!/bin/bash
+ENV='.env'
+
+touch -c ./$ENV
+
+# A little space
+echo "" >> $ENV
+
+# Dev environment
+echo "SS_ENVIRONMENT_TYPE=\"dev\"" >> $ENV
+
+read -r -p "Enter the admin username [admin]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DEFAULT_ADMIN_USERNAME=\"admin\"" >> $ENV
+	;;
+	*)
+		echo "SS_DEFAULT_ADMIN_USERNAME=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+read -r -p "Enter the admin password [pass]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DEFAULT_ADMIN_PASSWORD=\"pass\"" >> $ENV
+	;;
+	*)
+		echo "SS_DEFAULT_ADMIN_PASSWORD=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+
+read -r -p "Enter the base URL [http://${PWD##*/}.test]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_BASE_URL=\"http://${PWD##*/}.test\"" >> $ENV
+	;;
+	*)
+		echo "SS_BASE_URL=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+echo "" >> $ENV
+
+echo "SS_DATABASE_CHOOSE_NAME=\"true\"" >> $ENV
+echo "SS_DATABASE_CLASS=\"MySQLPDODatabase\"" >> $ENV
+
+read -r -p "Enter the database name [ss_${PWD##*/}]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DATABASE_NAME=\"ss_${PWD##*/}\"" >> $ENV
+	;;
+	*)
+		echo "SS_DATABASE_NAME=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+read -r -p "Enter the database username [root]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DATABASE_USERNAME=\"root\"" >> $ENV
+	;;
+	*)
+		echo "SS_DATABASE_USERNAME=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+read -r -p "Enter the database password [root]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DATABASE_PASSWORD=\"root\"" >> $ENV
+	;;
+	*)
+		echo "SS_DATABASE_PASSWORD=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+read -r -p "Enter the database server [localhost]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_DATABASE_SERVER=\"localhost\"" >> $ENV
+	;;
+	*)
+		echo "SS_DATABASE_SERVER=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+echo "" >> $ENV
+
+read -r -p "Enter your email address [jd@toast.co.nz]`echo $'\n> '`" VALUE
+case $VALUE in
+	"")
+		echo "SS_SEND_ALL_EMAILS_TO=\"jd@toast.co.nz\"" >> $ENV
+	;;
+	*)
+		echo "SS_SEND_ALL_EMAILS_TO=\"$VALUE\"" >> $ENV
+	;;
+esac
+
+echo ".env file has been created successfully!"
